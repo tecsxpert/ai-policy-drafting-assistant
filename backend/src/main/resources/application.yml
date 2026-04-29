@@ -1,0 +1,42 @@
+server:
+  port: 8080  # Application running port
+
+spring:
+  datasource:
+    url: jdbc:mysql://localhost:3306/tooldb
+    username: root
+    password: lion
+
+  jpa:
+    hibernate:
+      ddl-auto: update  # Auto update database schema
+    show-sql: true  # Show SQL queries in console
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQL8Dialect  # MySQL dialect for Hibernate
+
+  redis:
+    host: ${REDIS_HOST}  # Redis server host
+    port: ${REDIS_PORT}  # Redis server port
+
+  mail:
+    host: ${MAIL_HOST}  # SMTP mail server host
+    username: ${MAIL_USERNAME}  # Email username
+    password: ${MAIL_PASSWORD}  # Email password
+
+jwt:
+  secret: ${JWT_SECRET}  # Secret key for JWT
+  expiration: 86400000  # Token expiration time (in milliseconds)
+
+  # spring:
+  # mail:
+  #   host: smtp.gmail.com        # Gmail SMTP server for sending emails
+  #   port: 587                   # Standard TLS port for email communication
+  #   username: email@gmail.com   # Sender email address
+  #   password: password      # Gmail App Password (not regular password)
+  #   properties:
+  #     mail:
+  #       smtp:
+  #         auth: true            # Enables authentication with email server
+  #         starttls:
+  #           enable: true        # Enables secure TLS connection
