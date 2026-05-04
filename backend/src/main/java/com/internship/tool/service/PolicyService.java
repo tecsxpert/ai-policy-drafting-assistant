@@ -1,83 +1,92 @@
 package com.internship.tool.service;
 
 import com.internship.tool.entity.Policy;
-import com.internship.tool.exception.ResourceNotFoundException;
 import com.internship.tool.repository.PolicyRepository;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.cache.annotation.Cacheable;
-import org.springframework.cache.annotation.CacheEvict;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
-@Service // Business logic layer
+@Service
 public class PolicyService {
 
-    @Autowired
-    private PolicyRepository policyRepository;
+    private final PolicyRepository policyRepository;
 
-    @Autowired
-    private EmailService emailService;
+    public PolicyService(PolicyRepository policyRepository) {
+        this.policyRepository = policyRepository;
+    }
 
-    // ✅ CREATE policy (clear cache + send email)
-    @CacheEvict(value = {"policies", "policy"}, allEntries = true)
     public Policy createPolicy(Policy policy) {
-
-        // Save policy to DB
-        Policy savedPolicy = policyRepository.save(policy);
-
-        // Send email after creation
-        emailService.sendPolicyCreatedEmail(
-                "test@gmail.com", // replace later
-                savedPolicy.getTitle()
-        );
-
-        return savedPolicy;
+        policy.setDeleted(false);
+        return policyRepository.save(policy);
     }
 
-    // ✅ GET all policies (cached)
-    @Cacheable(value = "policies")
-    public Page<Policy> getAllPolicies(Pageable pageable) {
-        System.out.println("Fetching from DB...");
-        return policyRepository.findAll(pageable);
+    public List<Policy> getAllPolicies() {
+        return policyRepository.findAll()
+                .stream()
+                .filter(p -> !p.isDeleted())
+                .collect(Collectors.toList());
     }
 
-    // ✅ GET policy by ID (cached)
-    @Cacheable(value = "policy", key = "#id")
     public Policy getPolicyById(Long id) {
-        System.out.println("Fetching from DB...");
-        return policyRepository.findById(id)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException("Policy not found with id: " + id));
+        Policy policy = policyRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Policy not found"));
+
+        if (policy.isDeleted()) {
+            throw new RuntimeException("Policy is deleted");
+        }
+
+        return policy;
     }
 
-    // ✅ DELETE policy (clear cache)
-    @CacheEvict(value = {"policies", "policy"}, allEntries = true)
-    public void deletePolicy(Long id) {
-        Policy policy = getPolicyById(id); // ensure exists
-        policyRepository.delete(policy);
+    public Policy updatePolicy(Long id, Policy updatedPolicy) {
+        Policy existingPolicy = getPolicyById(id);
+
+        existingPolicy.setTitle(updatedPolicy.getTitle());
+        existingPolicy.setDescription(updatedPolicy.getDescription());
+        existingPolicy.setCategory(updatedPolicy.getCategory());
+        existingPolicy.setStatus(updatedPolicy.getStatus());
+
+        return policyRepository.save(existingPolicy);
     }
 
-    // ✅ NEW: Check overdue policies and send email
+    public void softDeletePolicy(Long id) {
+        Policy policy = getPolicyById(id);
+        policy.setDeleted(true);
+        policyRepository.save(policy);
+    }
+
+    public List<Policy> searchPolicies(String q) {
+        return policyRepository.searchPolicies(q);
+    }
+
+    public Map<String, Object> getDashboardStats() {
+        Map<String, Object> stats = new HashMap<>();
+
+        long total = policyRepository.count();
+        long active = policyRepository.findAll()
+                .stream()
+                .filter(p -> !p.isDeleted())
+                .count();
+
+        stats.put("totalPolicies", total);
+        stats.put("activePolicies", active);
+        stats.put("deletedPolicies", total - active);
+
+        return stats;
+    }
+
     public void checkOverduePolicies() {
-
-        // Fetch all policies
         List<Policy> policies = policyRepository.findAll();
 
         for (Policy policy : policies) {
-
-            // Check if due date exists AND is expired
             if (policy.getDueDate() != null &&
-                policy.getDueDate().isBefore(LocalDateTime.now())) {
+                    policy.getDueDate().isBefore(LocalDateTime.now())) {
 
-                // Send overdue email
-                emailService.sendPolicyCreatedEmail(
-                        "test@gmail.com", // replace later
-                        policy.getTitle() + " is overdue"
-                );
+                System.out.println(policy.getTitle() + " is overdue");
             }
         }
     }

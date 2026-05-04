@@ -2,46 +2,62 @@ package com.internship.tool.controller;
 
 import com.internship.tool.entity.Policy;
 import com.internship.tool.service.PolicyService;
-import jakarta.validation.Valid;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/policies")
 public class PolicyController {
 
-    @Autowired
-    private PolicyService policyService;
+    private final PolicyService policyService;
 
-    // GET /all (Paginated)
-    @GetMapping("/all")
-    public ResponseEntity<Page<Policy>> getAllPolicies(Pageable pageable) {
-        Page<Policy> policies = policyService.getAllPolicies(pageable);
-        return ResponseEntity.ok(policies);
+    public PolicyController(PolicyService policyService) {
+        this.policyService = policyService;
     }
 
-    // GET /{id} with 404 handling
+    @PostMapping("/create")
+    public ResponseEntity<Policy> createPolicy(@RequestBody Policy policy) {
+        return ResponseEntity.ok(policyService.createPolicy(policy));
+    }
+
+    @GetMapping("/all")
+    public ResponseEntity<List<Policy>> getAllPolicies() {
+        return ResponseEntity.ok(policyService.getAllPolicies());
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<Policy> getPolicyById(@PathVariable Long id) {
-        Policy policy = policyService.getPolicyById(id);
-        return ResponseEntity.ok(policy);
+        return ResponseEntity.ok(policyService.getPolicyById(id));
     }
 
-    // POST /create with validation
-    @PostMapping("/create")
-    public ResponseEntity<Policy> createPolicy(@Valid @RequestBody Policy policy) {
-        Policy savedPolicy = policyService.createPolicy(policy);
-        return new ResponseEntity<>(savedPolicy, HttpStatus.CREATED);
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
+    @PutMapping("/{id}")
+    public ResponseEntity<Policy> updatePolicy(
+            @PathVariable Long id,
+            @RequestBody Policy policyDetails) {
+        return ResponseEntity.ok(policyService.updatePolicy(id, policyDetails));
     }
 
-    // DELETE 
+    @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping("/{id}")
     public ResponseEntity<String> deletePolicy(@PathVariable Long id) {
-        policyService.deletePolicy(id);
-        return ResponseEntity.ok("Policy deleted successfully");
+        policyService.softDeletePolicy(id);
+        return ResponseEntity.ok("Policy soft deleted successfully");
+    }
+
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','VIEWER')")
+    @GetMapping("/search")
+    public ResponseEntity<List<Policy>> searchPolicies(@RequestParam String q) {
+        return ResponseEntity.ok(policyService.searchPolicies(q));
+    }
+
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
+    @GetMapping("/stats")
+    public ResponseEntity<Map<String, Object>> getStats() {
+        return ResponseEntity.ok(policyService.getDashboardStats());
     }
 }
