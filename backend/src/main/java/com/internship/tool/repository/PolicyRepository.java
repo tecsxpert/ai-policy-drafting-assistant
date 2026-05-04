@@ -10,7 +10,7 @@ import java.util.List;
 public interface PolicyRepository extends JpaRepository<Policy, Long> {
 
     @Query("""
-        SELECT p FROM Policy p 
+        SELECT p FROM Policy p
         WHERE p.deleted = false
         AND (
             LOWER(p.title) LIKE LOWER(CONCAT('%', :q, '%'))

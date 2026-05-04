@@ -4,6 +4,7 @@ import com.internship.tool.entity.Policy;
 import com.internship.tool.repository.PolicyRepository;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -76,5 +77,17 @@ public class PolicyService {
         stats.put("deletedPolicies", total - active);
 
         return stats;
+    }
+
+    public void checkOverduePolicies() {
+        List<Policy> policies = policyRepository.findAll();
+
+        for (Policy policy : policies) {
+            if (policy.getDueDate() != null &&
+                    policy.getDueDate().isBefore(LocalDateTime.now())) {
+
+                System.out.println(policy.getTitle() + " is overdue");
+            }
+        }
     }
 }

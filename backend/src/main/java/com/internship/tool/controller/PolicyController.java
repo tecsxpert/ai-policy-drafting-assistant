@@ -10,7 +10,7 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/policies")
+@RequestMapping("/api/policies")
 public class PolicyController {
 
     private final PolicyService policyService;
@@ -19,25 +19,21 @@ public class PolicyController {
         this.policyService = policyService;
     }
 
-    // CREATE POLICY
-    @PostMapping
+    @PostMapping("/create")
     public ResponseEntity<Policy> createPolicy(@RequestBody Policy policy) {
         return ResponseEntity.ok(policyService.createPolicy(policy));
     }
 
-    // GET ALL POLICIES
-    @GetMapping
+    @GetMapping("/all")
     public ResponseEntity<List<Policy>> getAllPolicies() {
         return ResponseEntity.ok(policyService.getAllPolicies());
     }
 
-    // GET POLICY BY ID
     @GetMapping("/{id}")
     public ResponseEntity<Policy> getPolicyById(@PathVariable Long id) {
         return ResponseEntity.ok(policyService.getPolicyById(id));
     }
 
-    // UPDATE POLICY (ADMIN + MANAGER)
     @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     @PutMapping("/{id}")
     public ResponseEntity<Policy> updatePolicy(
@@ -46,7 +42,6 @@ public class PolicyController {
         return ResponseEntity.ok(policyService.updatePolicy(id, policyDetails));
     }
 
-    // DELETE POLICY (ONLY ADMIN)
     @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping("/{id}")
     public ResponseEntity<String> deletePolicy(@PathVariable Long id) {
@@ -54,14 +49,12 @@ public class PolicyController {
         return ResponseEntity.ok("Policy soft deleted successfully");
     }
 
-    // SEARCH POLICY (ALL ROLES)
     @PreAuthorize("hasAnyRole('ADMIN','MANAGER','VIEWER')")
     @GetMapping("/search")
     public ResponseEntity<List<Policy>> searchPolicies(@RequestParam String q) {
         return ResponseEntity.ok(policyService.searchPolicies(q));
     }
 
-    // DASHBOARD STATS (ADMIN + MANAGER)
     @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     @GetMapping("/stats")
     public ResponseEntity<Map<String, Object>> getStats() {
