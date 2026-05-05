@@ -31,7 +31,7 @@ public class JwtFilter extends OncePerRequestFilter {
 
         String path = request.getRequestURI();
 
-        // ✅ SKIP AUTH ENDPOINTS (VERY IMPORTANT FIX)
+        
         if (path.startsWith("/auth")) {
             filterChain.doFilter(request, response);
             return;
@@ -44,7 +44,7 @@ public class JwtFilter extends OncePerRequestFilter {
             String token = authHeader.substring(7);
 
             try {
-                String email = jwtUtil.extractEmail(token);
+                String email = jwtUtil.extractUsername(token);
 
                 UsernamePasswordAuthenticationToken authentication =
                         new UsernamePasswordAuthenticationToken(

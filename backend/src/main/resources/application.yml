@@ -40,3 +40,11 @@ jwt:
   #         auth: true            # Enables authentication with email server
   #         starttls:
   #           enable: true        # Enables secure TLS connection
+  #           enable: true        # Enables secure TLS connection
+
+  spring:
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
+
