@@ -1,6 +1,7 @@
 from flask import Blueprint, request, jsonify
 from flask import Response, stream_with_context 
 from services.groq_client import call_groq
+from services.middleware import sanitise_request
 import json
 import time
 
@@ -8,6 +9,7 @@ generate_report_bp = Blueprint("generate_report", __name__)
 
 
 @generate_report_bp.route("/generate-report", methods=["POST"])
+@sanitise_request
 def generate_report():
     data = request.get_json()
 
