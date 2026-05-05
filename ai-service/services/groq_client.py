@@ -1,6 +1,11 @@
+"""
+Groq API Client — AI Service
+Handles communication with the Groq LLM API (LLaMA 3.3 70B).
+Includes retry logic and graceful fallback.
+"""
+
 import os
 import time
- features
 import logging
 import requests
 from dotenv import load_dotenv
@@ -8,9 +13,11 @@ from dotenv import load_dotenv
 load_dotenv()
 
 logging.basicConfig(level=logging.ERROR)
+logger = logging.getLogger(__name__)
 
+# Legacy class-based client (kept for backward compatibility)
 class GroqClient:
-    def _init_(self):
+    def __init__(self):
         self.api_key = os.getenv("GROQ_API_KEY")
         self.url = "https://api.groq.com/openai/v1/chat/completions"
 
@@ -52,7 +59,8 @@ class GroqClient:
 
         return "Error generating response"
 
-import requests
+
+# ─── Primary function-based client (used by all routes) ───────────────
 
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
@@ -60,6 +68,11 @@ MODEL = "llama-3.3-70b-versatile"
 
 
 def call_groq(prompt: str, retries: int = 3):
+    """
+    Call the Groq API with the given prompt.
+    Returns AI response text on success, or fallback message on failure.
+    Never logs prompt content (PII policy).
+    """
     headers = {
         "Authorization": f"Bearer {GROQ_API_KEY}",
         "Content-Type": "application/json"
@@ -79,13 +92,15 @@ def call_groq(prompt: str, retries: int = 3):
             response = requests.post(GROQ_URL, json=payload, headers=headers)
 
             if response.status_code == 200:
+                # Log success without logging actual content (PII safety)
+                logger.info(f"Groq API call succeeded on attempt {attempt+1}")
                 return response.json()["choices"][0]["message"]["content"]
 
         except Exception as e:
-            print(f"[Groq Error] Attempt {attempt+1}: {e}")
+            # Log error details but NOT the prompt content
+            logger.error(f"[Groq Error] Attempt {attempt+1}: {e}")
 
         time.sleep(2 ** attempt)
 
-    # fallback (MANDATORY per spec)
+    # Fallback (MANDATORY per spec)
     return "AI service temporarily unavailable. Please try again later."
-main

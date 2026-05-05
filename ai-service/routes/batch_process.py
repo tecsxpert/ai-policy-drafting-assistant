@@ -1,5 +1,6 @@
 from flask import Blueprint, request, jsonify
 from services.groq_client import call_groq
+from services.middleware import sanitise_request
 import time
 import json
 
@@ -7,6 +8,7 @@ batch_process_bp = Blueprint("batch_process", __name__)
 
 
 @batch_process_bp.route("/batch-process", methods=["POST"])
+@sanitise_request
 def batch_process():
     data = request.get_json()
 
