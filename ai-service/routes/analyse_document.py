@@ -1,11 +1,13 @@
 from flask import Blueprint, request, jsonify
 from services.groq_client import call_groq
+from services.middleware import sanitise_request
 import json
 
 analyse_document_bp = Blueprint("analyse_document", __name__)
 
 
 @analyse_document_bp.route("/analyse-document", methods=["POST"])
+@sanitise_request
 def analyse_document():
 
     data = request.get_json()

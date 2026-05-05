@@ -1,11 +1,13 @@
 from flask import Blueprint, request, jsonify
 from services.groq_client import call_groq
+from services.middleware import sanitise_request
 import json
 
 recommend_bp = Blueprint("recommend", __name__)
 
 
 @recommend_bp.route("/recommend", methods=["POST"])
+@sanitise_request
 def recommend():
     data = request.get_json()
 
