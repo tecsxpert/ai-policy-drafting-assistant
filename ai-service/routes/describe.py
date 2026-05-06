@@ -2,11 +2,13 @@ from flask import Blueprint, request, jsonify
 from datetime import datetime
 from prompts.describe_prompt import build_describe_prompt
 from services.groq_client import call_groq
+from services.middleware import sanitise_request
 
 describe_bp = Blueprint("describe", __name__)
 
 
 @describe_bp.route("/describe", methods=["POST"])
+@sanitise_request
 def describe():
     data = request.get_json()
 
