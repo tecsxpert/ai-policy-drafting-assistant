@@ -24,7 +24,15 @@ public class FileController {
     // POST /upload
     @PostMapping("/upload")
     public ResponseEntity<FileEntity> uploadFile(@RequestParam("file") MultipartFile file) throws IOException {
-        return ResponseEntity.ok(fileService.uploadFile(file));
+        if (file == null || file.isEmpty()) {
+            return ResponseEntity.badRequest().build();
+        }
+
+        try {
+            return ResponseEntity.ok(fileService.uploadFile(file));
+        } catch (IOException ex) {
+            return ResponseEntity.status(500).build();
+        }
     }
 
     // GET /files/{id}
@@ -32,12 +40,18 @@ public class FileController {
     public ResponseEntity<InputStreamResource> downloadFile(@PathVariable Long id) throws IOException {
 
         File file = fileService.getFile(id);
+        if (file == null || !file.exists()) {
+            return ResponseEntity.notFound().build();
+        }
 
-        InputStreamResource resource = new InputStreamResource(new FileInputStream(file));
-
-        return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + file.getName())
-                .contentType(MediaType.APPLICATION_OCTET_STREAM)
-                .body(resource);
+        try {
+            InputStreamResource resource = new InputStreamResource(new FileInputStream(file));
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + file.getName())
+                    .contentType(MediaType.APPLICATION_OCTET_STREAM)
+                    .body(resource);
+        } catch (IOException ex) {
+            return ResponseEntity.status(500).build();
+        }
     }
 }

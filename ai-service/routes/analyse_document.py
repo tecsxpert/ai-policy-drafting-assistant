@@ -56,7 +56,7 @@ Document:
         # Call AI Service
         ai_response = call_groq(prompt)
 
-        if not ai_response or "temporarily unavailable" in ai_response:
+        if not ai_response:
             return jsonify({
                 "status": "error",
                 "message": "AI service returned empty response"

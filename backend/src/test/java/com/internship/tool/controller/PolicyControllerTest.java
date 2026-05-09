@@ -3,52 +3,84 @@ package com.internship.tool.controller;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.internship.tool.entity.Policy;
 import com.internship.tool.service.PolicyService;
-
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.time.LocalDateTime;
+
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@WebMvcTest(PolicyController.class)
+@WebMvcTest(controllers = PolicyController.class)
+@AutoConfigureMockMvc(addFilters = false)
 class PolicyControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
 
+    
     @MockBean
     private PolicyService policyService;
 
     @Autowired
     private ObjectMapper objectMapper;
 
-    // Test 1: Get Policy By ID
-    @Test
-    void testGetPolicyById() throws Exception {
-        Policy policy = new Policy();
-        policy.setId(1L);
-        policy.setTitle("Test Policy");
+    private Policy policy1;
 
-        when(policyService.getPolicyById(1L)).thenReturn(policy);
+    @BeforeEach
+    void setUp() {
+        objectMapper.findAndRegisterModules();
 
-        mockMvc.perform(get("/policies/1"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.title").value("Test Policy"));
+        policy1 = new Policy();
+        policy1.setId(1L);
+        policy1.setTitle("Test Policy");
+        policy1.setDescription("Desc");
+        policy1.setCategory("IT");
+        policy1.setStatus("ACTIVE");
+        policy1.setCreatedBy("admin");
+        policy1.setCreatedAt(LocalDateTime.now());
+        policy1.setUpdatedAt(LocalDateTime.now());
+        policy1.setDeleted(false);
+        policy1.setDueDate(LocalDateTime.now().plusDays(10));
     }
 
-    // Test 2: Policy Not Found
     @Test
-    void testGetPolicyById_NotFound() throws Exception {
+    void testCreatePolicy() throws Exception {
 
-        when(policyService.getPolicyById(1L))
-                .thenThrow(new RuntimeException("Policy not found"));
+        when(policyService.createPolicy(any(Policy.class)))
+                .thenReturn(policy1);
 
-        mockMvc.perform(get("/policies/1"))
-                .andExpect(status().isNotFound());
+        mockMvc.perform(post("/api/policies/create")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(policy1)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(1));
+    }
+
+    @Test
+    void testGetAllPolicies() throws Exception {
+
+        when(policyService.getAllPolicies(anyInt(), anyInt(), anyString(), anyString()))
+                .thenReturn(org.springframework.data.domain.Page.empty());
+
+        mockMvc.perform(get("/api/policies/all"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void testDeletePolicy() throws Exception {
+
+        doNothing().when(policyService).deletePolicy(1L);
+
+        mockMvc.perform(delete("/api/policies/1"))
+                .andExpect(status().isOk());
     }
 }
