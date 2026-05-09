@@ -1,54 +1,68 @@
 package com.internship.tool.entity;
 
-import jakarta.validation.constraints.*; // Validation annotations
 import jakarta.persistence.*;
+import jakarta.validation.constraints.NotBlank;
 import lombok.*;
-import org.springframework.data.annotation.CreatedDate;
-import org.springframework.data.annotation.LastModifiedDate;
-import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
-@Entity // Maps class to DB table
-@Table(name = "policies") // Table name
-@EntityListeners(AuditingEntityListener.class) // Enables auditing
-@Data // Lombok: getters, setters
-@NoArgsConstructor // No-args constructor
-@AllArgsConstructor // All-args constructor
-@Builder // Builder pattern
+@Entity
+@Table(
+    name = "policies",
+    indexes = {
+        @Index(name = "idx_policy_due_date", columnList = "due_date"),
+        @Index(name = "idx_policy_deleted", columnList = "is_deleted"),
+        @Index(name = "idx_policy_deleted_due", columnList = "is_deleted, due_date")
+    }
+)
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class Policy {
 
-    @Id // Primary key
-    @GeneratedValue(strategy = GenerationType.IDENTITY) // Auto increment
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @NotBlank(message = "Title is required") // Validation
-    @Column(nullable = false)
+    @NotBlank
     private String title;
 
-    @NotBlank(message = "Description is required") // Validation
-    @Column(columnDefinition = "TEXT")
+    @NotBlank
     private String description;
 
-    @NotBlank(message = "Category is required") // Validation
-    @Column
+    @NotBlank
     private String category;
 
-    @NotBlank(message = "Status is required") // Validation
-    @Column
+    @NotBlank
     private String status;
 
-    @CreatedDate // Auto set creation time
-    @Column(updatable = false)
+    @Column(name = "created_by")
+    private String createdBy;
+
+    @Column(name = "created_at")
     private LocalDateTime createdAt;
 
-    @LastModifiedDate // Auto update time
+    @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
-    @Column
-    private LocalDateTime dueDate; // used for overdue check
+    @Builder.Default
+    @Column(name = "is_deleted")
+    private boolean deleted = false;
 
-    // Stores AI-generated report content returned from the Flask AI service (Day 7 integration)
-    @Column(columnDefinition = "TEXT")
-    private String aiReport;
+    @Column(name = "due_date")
+    private LocalDateTime dueDate;
+
+    // 🔥 ONE POLICY → MANY AUDIT LOGS
+    @Builder.Default
+    @OneToMany(
+        mappedBy = "policy",
+        fetch = FetchType.LAZY,
+        cascade = CascadeType.ALL,
+        orphanRemoval = true
+    )
+    private List<AuditLog> auditLogs = new ArrayList<>();
 }

@@ -5,7 +5,10 @@ import com.internship.tool.dto.LoginRequest;
 import com.internship.tool.dto.RegisterRequest;
 import com.internship.tool.entity.User;
 import com.internship.tool.service.AuthService;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/auth")
@@ -17,30 +20,27 @@ public class AuthController {
         this.authService = authService;
     }
 
-    // ✅ REGISTER
     @PostMapping("/register")
-    public User register(@RequestBody RegisterRequest request) {
-        return authService.register(request);
+    public ResponseEntity<String> registerUser(@Valid @RequestBody RegisterRequest request) {
+        try {
+            User user = authService.register(request);
+            if (user == null) return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Registration failed");
+            return ResponseEntity.ok("User registered successfully as " + user.getRole());
+        } catch (RuntimeException ex) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(ex.getMessage());
+        }
     }
 
-    // ✅ LOGIN
     @PostMapping("/login")
-    public AuthResponse login(@RequestBody LoginRequest request) {
-
-        String token = authService.login(
-                request.getEmail(),
-                request.getPassword()
-        );
-
-        return new AuthResponse(token);
-    }
-
-    // ✅ REFRESH TOKEN (NEW)
-    @PostMapping("/refresh")
-    public AuthResponse refresh(@RequestParam String email) {
-
-        String token = authService.refresh(email);
-
-        return new AuthResponse(token);
+    public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest request) {
+        try {
+            String token = authService.login(
+                    request.getEmail(),
+                    request.getPassword()
+            );
+            return ResponseEntity.ok(new AuthResponse(token));
+        } catch (RuntimeException ex) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
     }
 }

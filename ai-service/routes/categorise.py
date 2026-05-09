@@ -1,35 +1,6 @@
 from flask import Blueprint, request, jsonify
- features
-from services.groq_client import GroqClient
-
-categorise_bp = Blueprint("categorise", _name_)
-
-groq = GroqClient()
-
-@categorise_bp.route("/categorise", methods=["POST"])
-def categorise():
-    data = request.json
-    text = data.get("text")
-
-    prompt = f"""
-Categorise this text into:
-HR, IT, Finance, Legal, Security
-
-Return JSON:
-{{
-category:"",
-confidence:0.0,
-reasoning:""
-}}
-
-Text: {text}
-"""
-
-    result = groq.generate(prompt)
-
-    return jsonify({"result": result})
-
 from services.groq_client import call_groq
+import json
 
 categorise_bp = Blueprint("categorise", __name__)
 
@@ -45,18 +16,25 @@ CATEGORIES = [
 
 @categorise_bp.route("/categorise", methods=["POST"])
 def categorise():
-    data = request.get_json()
+    # Get request body
+    data = request.get_json() or {}
 
-    if not data or not isinstance(data.get("input"), str):
-        return jsonify({"error": "Invalid input"}), 400
+    # Support both old and new request keys
+    user_input = data.get("input") or data.get("text")
 
-    user_input = data["input"]
+    # Validate input
+    if not user_input or not isinstance(user_input, str):
+        return jsonify({
+            "status": "error",
+            "message": "Invalid input"
+        }), 400
 
+    # AI Prompt
     prompt = f"""
-Classify the following input into one of these categories:
-{", ".join(CATEGORIES)}
+Classify the following input into exactly one of these categories:
+{', '.join(CATEGORIES)}
 
-Return JSON:
+Return ONLY valid JSON in this exact format:
 {{
     "category": "...",
     "confidence": 0.0,
@@ -67,7 +45,36 @@ Input:
 {user_input}
 """
 
-    response = call_groq(prompt)
+    try:
+        print("Sending prompt to Groq...")
 
-    return jsonify({"result": response})
- main
+        # Call AI
+        response = call_groq(prompt)
+
+        print("Groq Raw Response:", response)
+
+        # Convert AI string response into proper JSON
+        try:
+            parsed_response = json.loads(response)
+
+        except json.JSONDecodeError:
+            # Fallback if AI returns invalid JSON
+            parsed_response = {
+                "category": "Unknown",
+                "confidence": 0.0,
+                "reasoning": response
+            }
+
+        # Success response
+        return jsonify({
+            "status": "success",
+            "result": parsed_response
+        })
+
+    except Exception as e:
+        print("Categorise Route Error:", str(e))
+
+        return jsonify({
+            "status": "error",
+            "message": str(e)
+        }), 500

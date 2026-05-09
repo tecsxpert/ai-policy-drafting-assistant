@@ -1,5 +1,4 @@
-from flask import Blueprint, request, jsonify
-from flask import Response, stream_with_context 
+from flask import Blueprint, request, jsonify, Response, stream_with_context
 from services.groq_client import call_groq
 import json
 import time
@@ -7,27 +6,50 @@ import time
 generate_report_bp = Blueprint("generate_report", __name__)
 
 
-@generate_report_bp.route("/generate-report", methods=["POST"])
+# --------------------------------------------------
+# MAIN REPORT GENERATION ENDPOINT
+# URL: POST /api/generate_report
+# --------------------------------------------------
+@generate_report_bp.route("/generate_report", methods=["POST"])
 def generate_report():
     data = request.get_json()
 
-    #  Input validation
+    # ---- Input Validation ----
     if not data:
-        return jsonify({"error": "Request body is required"}), 400
+        return jsonify({
+            "status": "error",
+            "message": "Request body is required"
+        }), 400
 
-    if "input" not in data:
-        return jsonify({"error": "'input' field is required"}), 400
-
-    if not isinstance(data["input"], str):
-        return jsonify({"error": "Input must be a string"}), 400
-
-    user_input = data["input"].strip()
+    # Support multiple field names
+    user_input = (
+        data.get("input")
+        or data.get("text")
+        or data.get("policy_title")
+    )
 
     if not user_input:
-        return jsonify({"error": "Input cannot be empty"}), 400
+        return jsonify({
+            "status": "error",
+            "message": "'input' field is required"
+        }), 400
+
+    if not isinstance(user_input, str):
+        return jsonify({
+            "status": "error",
+            "message": "Input must be a string"
+        }), 400
+
+    user_input = user_input.strip()
+
+    if not user_input:
+        return jsonify({
+            "status": "error",
+            "message": "Input cannot be empty"
+        }), 400
 
     try:
-        # Strict prompt (forces JSON)
+        # ---- Strict Prompt ----
         prompt = f"""
 You are a senior AI governance and policy expert.
 
@@ -35,32 +57,48 @@ Task:
 Generate a structured AI policy report.
 
 STRICT RULES:
-- Return ONLY valid JSON (no explanation, no extra text)
-- Output must be a JSON object with EXACT keys:
-  title, executive_summary, overview, top_items, recommendations
-- top_items must be an array of 3–5 key points
-- recommendations must be an array of 3–5 actionable suggestions
-- Maintain formal and professional tone
+- Return ONLY valid JSON
+- No markdown
+- No explanations outside JSON
+- Output must contain EXACT keys:
+title, executive_summary, overview, top_items, recommendations
 
-Example Output:
+- top_items must contain 3 to 5 items
+- recommendations must contain 3 to 5 items
+- Maintain professional enterprise tone
+
+Example:
 {{
-  "title": "AI Governance Policy for Healthcare Systems",
+  "title": "AI Governance Policy for Enterprise Systems",
   "executive_summary": "This report outlines...",
-  "overview": "The system operates in...",
-  "top_items": ["Item 1", "Item 2", "Item 3"],
-  "recommendations": ["Rec 1", "Rec 2", "Rec 3"]
+  "overview": "The organization requires...",
+  "top_items": [
+    "Item 1",
+    "Item 2",
+    "Item 3"
+  ],
+  "recommendations": [
+    "Recommendation 1",
+    "Recommendation 2",
+    "Recommendation 3"
+  ]
 }}
 
 Input:
 {user_input}
 """
 
-        #  Call Groq
+        print("Sending generate_report prompt to Groq...")
+
+        # ---- AI Call ----
         ai_response = call_groq(prompt)
 
-        #  Parse JSON
+        print("Groq Raw Response:", ai_response)
+
+        # ---- Parse JSON ----
         try:
             report = json.loads(ai_response)
+
         except json.JSONDecodeError:
             return jsonify({
                 "status": "error",
@@ -68,7 +106,7 @@ Input:
                 "raw_output": ai_response
             }), 500
 
-        #  Validate structure
+        # ---- Validate Required Keys ----
         required_keys = {
             "title",
             "executive_summary",
@@ -84,61 +122,86 @@ Input:
                 "raw_output": ai_response
             }), 500
 
-        #  Validate arrays
-        if not isinstance(report["top_items"], list) or not isinstance(report["recommendations"], list):
+        # ---- Validate Arrays ----
+        if not isinstance(report["top_items"], list):
             return jsonify({
                 "status": "error",
-                "message": "top_items and recommendations must be arrays"
+                "message": "top_items must be an array"
             }), 500
 
-        # Optional stricter validation
+        if not isinstance(report["recommendations"], list):
+            return jsonify({
+                "status": "error",
+                "message": "recommendations must be an array"
+            }), 500
+
+        # ---- Validate Length ----
         if not (3 <= len(report["top_items"]) <= 5):
             return jsonify({
                 "status": "error",
-                "message": "top_items must have 3–5 items"
+                "message": "top_items must have 3 to 5 items"
             }), 500
 
         if not (3 <= len(report["recommendations"]) <= 5):
             return jsonify({
                 "status": "error",
-                "message": "recommendations must have 3–5 items"
+                "message": "recommendations must have 3 to 5 items"
             }), 500
 
-        # Final response
+        # ---- Success ----
         return jsonify({
             "status": "success",
             "data": report
         }), 200
 
     except Exception as e:
+        print("Generate Report Error:", str(e))
+
         return jsonify({
             "status": "error",
             "message": str(e)
         }), 500
-    
-
-#  DAY 8 NEW FEATURE: SSE STREAMING ENDPOINT ADDED
 
 
-@generate_report_bp.route("/generate-report-stream", methods=["POST"])
+# --------------------------------------------------
+# STREAMING REPORT ENDPOINT (DAY 8)
+# URL: POST /api/generate_report_stream
+# --------------------------------------------------
+@generate_report_bp.route("/generate_report_stream", methods=["POST"])
 def generate_report_stream():
 
     data = request.get_json()
 
-    if not data or "input" not in data:
-        return jsonify({"error": "input is required"}), 400
+    if not data:
+        return jsonify({
+            "status": "error",
+            "message": "Request body required"
+        }), 400
 
-    user_input = data["input"].strip()
+    user_input = data.get("input") or data.get("text")
 
     if not user_input:
-        return jsonify({"error": "input cannot be empty"}), 400
+        return jsonify({
+            "status": "error",
+            "message": "input is required"
+        }), 400
+
+    user_input = user_input.strip()
+
+    if not user_input:
+        return jsonify({
+            "status": "error",
+            "message": "input cannot be empty"
+        }), 400
 
     try:
         prompt = f"""
 You are a senior AI governance expert.
 
-Generate a clear AI policy explanation in simple sentences.
-Do NOT return JSON. Return plain text only.
+Generate a clear AI policy explanation in simple professional language.
+
+Return plain text only.
+No JSON.
 
 Input:
 {user_input}
@@ -146,16 +209,19 @@ Input:
 
         ai_response = call_groq(prompt)
 
-        if not ai_response or "temporarily unavailable" in ai_response:
-            return jsonify({"error": "AI response failed"}), 500
+        if not ai_response:
+            return jsonify({
+                "status": "error",
+                "message": "AI response failed"
+            }), 500
 
-        #  STREAM GENERATOR FUNCTION
+        # ---- Streaming Generator ----
         def generate():
             words = ai_response.split()
 
             for word in words:
                 yield f"data: {word}\n\n"
-                time.sleep(0.1)  # simulate streaming effect
+                time.sleep(0.1)
 
             yield "data: [DONE]\n\n"
 
@@ -165,7 +231,9 @@ Input:
         )
 
     except Exception as e:
+        print("Streaming Error:", str(e))
+
         return jsonify({
             "status": "error",
             "message": str(e)
-        }), 500    
+        }), 500

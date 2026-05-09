@@ -1,9 +1,11 @@
 package com.internship.tool.service;
 
+import com.internship.tool.entity.Role;
 import com.internship.tool.config.JwtUtil;
 import com.internship.tool.dto.RegisterRequest;
 import com.internship.tool.entity.User;
 import com.internship.tool.repository.UserRepository;
+
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -24,11 +26,23 @@ public class AuthService {
 
     // REGISTER
     public User register(RegisterRequest request) {
+
+        // Check duplicate email
+        if (userRepository.findByEmail(request.getEmail()).isPresent()) {
+            throw new RuntimeException("Email already exists");
+        }
+
         User user = new User();
         user.setName(request.getName());
         user.setEmail(request.getEmail());
         user.setPassword(passwordEncoder.encode(request.getPassword()));
-        user.setRole("VIEWER");
+
+        // Role assignment
+        if (request.getRole() != null) {
+            user.setRole(Role.valueOf(request.getRole().toUpperCase()));
+        } else {
+            user.setRole(Role.VIEWER);
+        }
 
         return userRepository.save(user);
     }
@@ -46,7 +60,7 @@ public class AuthService {
         return jwtUtil.generateToken(user.getEmail());
     }
 
-    // ✅ REFRESH TOKEN
+    // REFRESH TOKEN
     public String refresh(String email) {
         return jwtUtil.generateToken(email);
     }

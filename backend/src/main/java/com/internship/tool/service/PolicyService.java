@@ -1,124 +1,151 @@
 package com.internship.tool.service;
 
 import com.internship.tool.entity.Policy;
-import com.internship.tool.exception.ResourceNotFoundException;
 import com.internship.tool.repository.PolicyRepository;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.cache.annotation.Cacheable;
-import org.springframework.cache.annotation.CacheEvict;
-import org.springframework.scheduling.annotation.Async; 
 
 import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
-@Service // Business logic layer
+@Service
 public class PolicyService {
 
-    @Autowired
-    private PolicyRepository policyRepository;
+    private final PolicyRepository policyRepository;
 
-    @Autowired
-    private EmailService emailService;
+    public PolicyService(PolicyRepository policyRepository) {
+        this.policyRepository = policyRepository;
+    }
 
-    @Autowired
-    private AiServiceClient aiServiceClient;
-
-    // ✅ CREATE policy (clear cache + send email)
-    @CacheEvict(value = {"policies", "policy"}, allEntries = true)
+    // ==================================================
+    // CREATE POLICY
+    // ==================================================
     public Policy createPolicy(Policy policy) {
+        return policyRepository.save(policy);
+    }
 
-        // Save policy to DB
-        Policy savedPolicy = policyRepository.save(policy);
+    // ==================================================
+    // GET BY ID
+    // ==================================================
+    public Policy getPolicyById(Long id) {
+        return policyRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Policy not found"));
+    }
 
-        // Send email after creation
-        emailService.sendPolicyCreatedEmail(
-                "test@gmail.com", // replace later
-                savedPolicy.getTitle()
+    // ==================================================
+    // SIMPLE LIST
+    // ==================================================
+    public List<Policy> getAllPoliciesList() {
+        return policyRepository.findAll();
+    }
+
+    // ==================================================
+    // UPDATE POLICY
+    // ==================================================
+    public Policy updatePolicy(Long id, Policy updated) {
+
+        Policy existing = getPolicyById(id);
+
+        existing.setTitle(updated.getTitle());
+        existing.setDescription(updated.getDescription());
+        existing.setCategory(updated.getCategory());
+        existing.setStatus(updated.getStatus());
+        existing.setDueDate(updated.getDueDate());
+
+        return policyRepository.save(existing);
+    }
+
+    // ==================================================
+    // SOFT DELETE
+    // ==================================================
+    public void deletePolicy(Long id) {
+
+        Policy policy = getPolicyById(id);
+        policy.setDeleted(true);
+
+        policyRepository.save(policy);
+    }
+
+    // ==================================================
+    // PAGINATION (FIXED - IMPORTANT)
+    // ==================================================
+    public Page<Policy> getAllPolicies(int page, int size, String sortBy, String sortDir) {
+
+        Sort sort = sortDir.equalsIgnoreCase("desc")
+                ? Sort.by(sortBy).descending()
+                : Sort.by(sortBy).ascending();
+
+        Pageable pageable = PageRequest.of(page, size, sort);
+
+        // 🔥 FIX: use deleted filter query (NOT findAll)
+        return policyRepository.findByDeletedFalse(pageable);
+    }
+
+    // ==================================================
+    // SEARCH
+    // ==================================================
+    public List<Policy> searchPolicies(String q) {
+        return policyRepository.searchPolicies(q);
+    }
+
+    // ==================================================
+    // DASHBOARD STATS (OPTIMIZED)
+    // ==================================================
+    public Map<String, Object> getDashboardStats() {
+
+        Map<String, Object> stats = new HashMap<>();
+
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime end = now.plusDays(7);
+
+        long totalPolicies = policyRepository.count();
+        long overduePolicies = policyRepository.countOverdue(now);
+        long upcomingPolicies = policyRepository.countUpcoming(now, end);
+
+        stats.put("totalPolicies", totalPolicies);
+        stats.put("overduePolicies", overduePolicies);
+        stats.put("upcomingPolicies", upcomingPolicies);
+
+        stats.put("complianceScore",
+                totalPolicies == 0
+                        ? 100
+                        : Math.max(0, 100 - (overduePolicies * 10))
         );
 
-        generateAiAsync(savedPolicy.getId(), savedPolicy.getDescription());
-
-        return savedPolicy;
+        return stats;
     }
 
-    // ✅ GET all policies (cached)
-    @Cacheable(value = "policies")
-    public Page<Policy> getAllPolicies(Pageable pageable) {
-        System.out.println("Fetching from DB...");
-        return policyRepository.findAll(pageable);
-    }
-
-    // ✅ GET policy by ID (cached)
-    @Cacheable(value = "policy", key = "#id")
-    public Policy getPolicyById(Long id) {
-        System.out.println("Fetching from DB...");
-        return policyRepository.findById(id)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException("Policy not found with id: " + id));
-    }
-
-    // ✅ DELETE policy (clear cache)
-    @CacheEvict(value = {"policies", "policy"}, allEntries = true)
-    public void deletePolicy(Long id) {
-        Policy policy = getPolicyById(id); // ensure exists
-        policyRepository.delete(policy);
-    }
-
-    // ✅ NEW: Check overdue policies and send email
+    // ==================================================
+    // SCHEDULER CHECK
+    // ==================================================
     public void checkOverduePolicies() {
 
-        // Fetch all policies
-        List<Policy> policies = policyRepository.findAll();
+        long overdueCount = policyRepository.countOverdue(LocalDateTime.now());
 
-        for (Policy policy : policies) {
-
-            // Check if due date exists AND is expired
-            if (policy.getDueDate() != null &&
-                policy.getDueDate().isBefore(LocalDateTime.now())) {
-
-                // Send overdue email
-                emailService.sendPolicyCreatedEmail(
-                        "test@gmail.com", // replace later
-                        policy.getTitle() + " is overdue"
-                );
-            }
-        }
+        System.out.println("Overdue Policies: " + overdueCount);
     }
 
-    //  DAY 7 — ASYNC AI METHOD 
-    @Async
-    public void generateAiAsync(Long policyId, String input) {
-        try {
-            var response = aiServiceClient.generateReport(input);
+    // ==================================================
+    // OVERDUE LIST
+    // ==================================================
+    public List<Policy> getOverduePolicies() {
+        return policyRepository.findByDueDateBeforeAndDeletedFalse(LocalDateTime.now());
+    }
 
-            //  Handle null safely
-            if (response == null || response.get("data") == null) {
-                System.out.println("AI failed or returned null");
-                return;
-            }
+    // ==================================================
+    // UPCOMING LIST
+    // ==================================================
+    public List<Policy> getUpcomingPolicies() {
+        return policyRepository.findByDueDateBetweenAndDeletedFalse(
+                LocalDateTime.now(),
+                LocalDateTime.now().plusDays(7)
+        );
+    }
 
-            Object data = response.get("data");
-
-            if (data == null) {
-                  System.out.println("AI data missing");
-              return;
-            }
-
-            String aiResult = data.toString();
-
-            Policy policy = policyRepository.findById(policyId).orElse(null);
-
-            if (policy != null) {
-                policy.setAiReport(aiResult);
-                policyRepository.save(policy);
-            }
-
-        } catch (Exception e) {
-            System.out.println("Async error: " + e.getMessage());
-        }
+    // ==================================================
+    // OPTIMIZED FETCH (JOIN FETCH)
+    // ==================================================
+    public List<Policy> getOptimizedPolicies() {
+        return policyRepository.findPoliciesWithLogs();
     }
 }
