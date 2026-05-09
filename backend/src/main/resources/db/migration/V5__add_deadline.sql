@@ -1,0 +1,2 @@
+ALTER TABLE policies
+ADD COLUMN due_date TIMESTAMP;

@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Policy Created</title> <!-- Title of email -->
+</head>
+<body>
+
+    <h2>New Policy Created</h2> <!-- Heading -->
+
+    <p>Dear User,</p> <!-- Static text -->
+
+    <p>
+        A new policy titled 
+        <!-- Dynamic value from backend -->
+        <strong th:text="${title}">Policy Title</strong> 
+        has been created successfully.
+    </p>
+
+    <p>Thank you.</p> <!-- Closing message -->
+
+</body>
+</html>
