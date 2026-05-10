@@ -17,13 +17,13 @@ public class AuthController {
         this.authService = authService;
     }
 
-    // ✅ REGISTER
+    // REGISTER
     @PostMapping("/register")
     public User register(@RequestBody RegisterRequest request) {
         return authService.register(request);
     }
 
-    // ✅ LOGIN
+    // LOGIN
     @PostMapping("/login")
     public AuthResponse login(@RequestBody LoginRequest request) {
 
@@ -35,7 +35,7 @@ public class AuthController {
         return new AuthResponse(token);
     }
 
-    // ✅ REFRESH TOKEN (NEW)
+    // REFRESH TOKEN 
     @PostMapping("/refresh")
     public AuthResponse refresh(@RequestParam String email) {
 

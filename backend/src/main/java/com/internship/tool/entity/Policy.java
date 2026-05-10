@@ -1,54 +1,138 @@
 package com.internship.tool.entity;
 
 import jakarta.validation.constraints.*; // Validation annotations
-import jakarta.persistence.*;
-import lombok.*;
-import org.springframework.data.annotation.CreatedDate;
-import org.springframework.data.annotation.LastModifiedDate;
-import org.springframework.data.jpa.domain.support.AuditingEntityListener;
+import jakarta.persistence.*; // JPA annotations
+
+import lombok.*; // Lombok annotations
+
+import org.springframework.data.annotation.CreatedDate; // Auto creation timestamp
+import org.springframework.data.annotation.LastModifiedDate; // Auto update timestamp
+import org.springframework.data.jpa.domain.support.AuditingEntityListener; // Enables auditing
+
+import io.swagger.v3.oas.annotations.media.Schema; // Swagger documentation
+
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 import java.time.LocalDateTime;
 
-@Entity // Maps class to DB table
-@Table(name = "policies") // Table name
-@EntityListeners(AuditingEntityListener.class) // Enables auditing
-@Data // Lombok: getters, setters
-@NoArgsConstructor // No-args constructor
-@AllArgsConstructor // All-args constructor
-@Builder // Builder pattern
+@JsonIgnoreProperties(ignoreUnknown = true)
+
+@Entity // Marks class as database entity
+@Table(name = "policies") // Database table name
+@EntityListeners(AuditingEntityListener.class) // Enables automatic timestamps
+
+@Data // Generates getters, setters, toString, equals, hashCode
+@NoArgsConstructor // Default constructor
+@AllArgsConstructor // All arguments constructor
+@Builder // Builder pattern support
+
+@Schema(description = "Policy entity representing policy details")
 public class Policy {
 
-    @Id // Primary key
-    @GeneratedValue(strategy = GenerationType.IDENTITY) // Auto increment
+    // =========================================================
+    // Primary Key
+    // =========================================================
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+
+    @Schema(
+        description = "Unique ID of the policy",
+        example = "1"
+    )
     private Long id;
 
-    @NotBlank(message = "Title is required") // Validation
+    // =========================================================
+    // Policy Title
+    // =========================================================
+    @NotBlank(message = "Title is required")
+
     @Column(nullable = false)
+
+    @Schema(
+        description = "Title of the policy",
+        example = "Data Security Policy"
+    )
     private String title;
 
-    @NotBlank(message = "Description is required") // Validation
+    // =========================================================
+    // Policy Description
+    // =========================================================
+    @NotBlank(message = "Description is required")
+
     @Column(columnDefinition = "TEXT")
+
+    @Schema(
+        description = "Detailed description of the policy",
+        example = "This policy ensures data protection and encryption."
+    )
     private String description;
 
-    @NotBlank(message = "Category is required") // Validation
+    // =========================================================
+    // Policy Category
+    // =========================================================
+    @NotBlank(message = "Category is required")
+
     @Column
+
+    @Schema(
+        description = "Category of the policy",
+        example = "Security"
+    )
     private String category;
 
-    @NotBlank(message = "Status is required") // Validation
+    // =========================================================
+    // Policy Status
+    // =========================================================
+    @NotBlank(message = "Status is required")
+
     @Column
+
+    @Schema(
+        description = "Current status of the policy",
+        example = "ACTIVE"
+    )
     private String status;
 
-    @CreatedDate // Auto set creation time
+    // =========================================================
+    // Created Timestamp
+    // =========================================================
+    @CreatedDate // Automatically set during insert
+
     @Column(updatable = false)
+
+    @Schema(
+        description = "Policy creation timestamp"
+    )
     private LocalDateTime createdAt;
 
-    @LastModifiedDate // Auto update time
+    // =========================================================
+    // Updated Timestamp
+    // =========================================================
+    @LastModifiedDate // Automatically updated during modification
+
+    @Schema(
+        description = "Policy updated timestamp"
+    )
     private LocalDateTime updatedAt;
 
+    // =========================================================
+    // Due Date
+    // =========================================================
     @Column
-    private LocalDateTime dueDate; // used for overdue check
 
-    // Stores AI-generated report content returned from the Flask AI service (Day 7 integration)
+    @Schema(
+        description = "Due date for policy review"
+    )
+    private LocalDateTime dueDate;
+
+    // =========================================================
+    // AI Generated Report
+    // =========================================================
     @Column(columnDefinition = "TEXT")
+
+    @Schema(
+        description = "AI generated report for the policy",
+        example = "This policy complies with security standards and requires periodic review."
+    )
     private String aiReport;
 }

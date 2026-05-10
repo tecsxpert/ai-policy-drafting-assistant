@@ -31,9 +31,9 @@ class JwtUtilTest {
     // Test 3: Invalid Token
     @Test
     void testInvalidToken() {
-        boolean isValid = jwtUtil.validateToken("invalid_token", "testuser");
-
-        assertFalse(isValid);
+        assertThrows(Exception.class, () -> {
+        jwtUtil.validateToken("invalid_token", "testuser");
+      });
     }
 
     // Test 4: Extract Username

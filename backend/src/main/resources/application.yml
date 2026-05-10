@@ -9,42 +9,43 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: update  # Auto update database schema
-    show-sql: true  # Show SQL queries in console
+      ddl-auto: update
+    show-sql: true
     properties:
       hibernate:
-        dialect: org.hibernate.dialect.MySQL8Dialect  # MySQL dialect for Hibernate
+        dialect: org.hibernate.dialect.MySQL8Dialect
 
+  # Redis 
   redis:
-    host: ${REDIS_HOST}  # Redis server host
-    port: ${REDIS_PORT}  # Redis server port
+    host: ${REDIS_HOST:localhost}
+    port: ${REDIS_PORT:6379}
 
+  # Mail configuration )
   mail:
-    host: ${MAIL_HOST}  # SMTP mail server host
-    username: ${MAIL_USERNAME}  # Email username
-    password: ${MAIL_PASSWORD}  # Email password
+    host: ${MAIL_HOST:smtp.gmail.com}
+    port: 587
+    username: ${MAIL_USERNAME:test@gmail.com}
+    password: ${MAIL_PASSWORD:testpassword}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
 
-jwt:
-  secret: ${JWT_SECRET}  # Secret key for JWT
-  expiration: 86400000  # Token expiration time (in milliseconds)
-
-  # spring:
-  # mail:
-  #   host: smtp.gmail.com        # Gmail SMTP server for sending emails
-  #   port: 587                   # Standard TLS port for email communication
-  #   username: email@gmail.com   # Sender email address
-  #   password: password      # Gmail App Password (not regular password)
-  #   properties:
-  #     mail:
-  #       smtp:
-  #         auth: true            # Enables authentication with email server
-  #         starttls:
-  #           enable: true        # Enables secure TLS connection
-  #           enable: true        # Enables secure TLS connection
-
-  spring:
+  # File upload config 
   servlet:
     multipart:
       max-file-size: 10MB
       max-request-size: 10MB
 
+# JWT config 
+jwt:
+  secret: ${JWT_SECRET:mysecretkey}
+  expiration: 86400000
+
+  springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    enabled: true

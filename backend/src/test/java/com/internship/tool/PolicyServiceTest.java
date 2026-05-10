@@ -2,6 +2,8 @@ package com.internship.tool;
 
 import com.internship.tool.entity.Policy;
 import com.internship.tool.repository.PolicyRepository;
+import com.internship.tool.service.AiServiceClient;
+import com.internship.tool.service.EmailService;
 import com.internship.tool.service.PolicyService;
 
 import org.junit.jupiter.api.Test;
@@ -24,6 +26,12 @@ class PolicyServiceTest {
 
     @Mock
     private PolicyRepository policyRepository;
+
+    @Mock
+    private EmailService emailService;
+
+    @Mock
+    private AiServiceClient aiServiceClient;
 
     @InjectMocks
     private PolicyService policyService;
